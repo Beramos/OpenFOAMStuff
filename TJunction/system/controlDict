@@ -67,120 +67,109 @@ functions
         codeWrite
         #{
           const volVectorField& U = mesh().lookupObject<volVectorField>("U");
+          const volVectorField& nut = mesh().lookupObject<volVectorField>("nut");
           const fvMesh& mesh = refCast<const fvMesh>(obr_); // there are probably better ways to get to the current time
           const int patchNumber = 3;
 
-            IOdictionary transportProperties
-            (
+          surfaceVectorField normals
+          (
               IOobject
               (
-                "transportProperties",
-                mesh.time().constant(),   // based from https://openfoamwiki.net/index.php/OpenFOAM_guide/Input_and_Output_operations_using_dictionaries_and_the_IOobject_class  and https://github.com/OpenFOAM/OpenFOAM-dev/blob/38b99504c01e7b19b9af7cb54793fd72c03e455a/tutorials/basic/potentialFoam/cylinder/system/controlDict
-                mesh,
-                IOobject::MUST_READ_IF_MODIFIED,
-                IOobject::NO_WRITE
+                  "normals",
+                  mesh.time().timeName(),
+                  mesh,
+                  IOobject::NO_READ,
+                  IOobject::AUTO_WRITE
+              ),
+              mesh,
+              dimensionedVector
+              (
+                  "normals",
+                  dimensionSet(0, 0, 0, 0, 0, 0 ,0),
+                  vector::zero
               )
-            );
+          );
 
-              surfaceVectorField normals
+          // Equations from http://www.continuummechanics.org/tractionvector.html
+          volVectorField tractionVector
+          (
+              IOobject
               (
-                  IOobject
-                  (
-                      "normals",
-                      mesh.time().timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE
-                  ),
+                  "tractionVector",
+                  mesh.time().timeName(),
                   mesh,
-                  dimensionedVector
-                  (
-                      "normals",
-                      dimensionSet(0, 0, 0, 0, 0, 0 ,0),
-                      vector::zero
-                  )
-              );
-
-              // Equations from http://www.continuummechanics.org/tractionvector.html
-              volVectorField tractionVector
+                  IOobject::NO_READ,
+                  IOobject::AUTO_WRITE
+              ),
+              mesh,
+              dimensionedVector
               (
-                  IOobject
-                  (
-                      "tractionVector",
-                      mesh.time().timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE
-                  ),
-                  mesh,
-                  dimensionedVector
-                  (
-                      "tractionVector",
-                      sqr(dimLength)/sqr(dimTime),
-                      vector::zero
-                  )
-              );
+                  "tractionVector",
+                  sqr(dimLength)/sqr(dimTime),
+                  vector::zero
+              )
+          );
 
-              volScalarField normalStress
+          volScalarField normalStress
+          (
+              IOobject
               (
-                  IOobject
-                  (
-                      "normalStress",
-                      mesh.time().timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE
-                  ),
+                  "normalStress",
+                  mesh.time().timeName(),
                   mesh,
-                  dimensionedScalar
-                  (
-                      "normalStress",
-                      sqr(dimLength)/sqr(dimTime),
-                      0
-                  )
-              );
-
-              volScalarField shearStress
+                  IOobject::NO_READ,
+                  IOobject::AUTO_WRITE
+              ),
+              mesh,
+              dimensionedScalar
               (
-                  IOobject
-                  (
-                      "shearStress",
-                      mesh.time().timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE
-                  ),
+                  "normalStress",
+                  sqr(dimLength)/sqr(dimTime),
+                  0
+              )
+          );
+
+          volScalarField shearStress
+          (
+              IOobject
+              (
+                  "shearStress",
+                  mesh.time().timeName(),
                   mesh,
-                  dimensionedScalar
-                  (
-                      "shearStress",
-                      sqr(dimLength)/sqr(dimTime),
-                      0
-                  )
-              );
+                  IOobject::NO_READ,
+                  IOobject::AUTO_WRITE
+              ),
+              mesh,
+              dimensionedScalar
+              (
+                  "shearStress",
+                  sqr(dimLength)/sqr(dimTime),
+                  0
+              )
+          );
 
-              vectorField& ssp = tractionVector.boundaryFieldRef()[patchNumber];
-              const vectorField Sfp = mesh.Sf().boundaryField()[patchNumber];
-              const scalarField magSfp = mesh.magSf().boundaryField()[patchNumber];
-              const volTensorField T = fvc::grad(U);
-              const tensorField Reffp = T.boundaryField()[patchNumber];
-              ssp = (-Sfp/magSfp) & Reffp;
+          vectorField& ssp = tractionVector.boundaryFieldRef()[patchNumber];
+          const vectorField Sfp = mesh.Sf().boundaryField()[patchNumber];
+          const scalarField magSfp = mesh.magSf().boundaryField()[patchNumber];
+          const volTensorField T = fvc::grad(U);
+          const tensorField Reffp = T.boundaryField()[patchNumber];
+          ssp = (-Sfp/magSfp) & Reffp;
 
-              // tractionVector.write();
+          // tractionVector.write();
 
-              scalarField& sig = normalStress.boundaryFieldRef()[patchNumber];
-              sig = (-Sfp/magSfp) & ssp;
+          scalarField& sig = normalStress.boundaryFieldRef()[patchNumber];
+          sig = (-Sfp/magSfp) & ssp;
 
-              // normalStress.write();
+          // normalStress.write();
 
-              scalarField& S_n = shearStress.boundaryFieldRef()[patchNumber];
-              S_n = sqrt(magSqr(ssp)-sqr(sig));
+          scalarField& S_n = shearStress.boundaryFieldRef()[patchNumber];
+          S_n = sqrt(magSqr(ssp)-sqr(sig));
 
-              shearStress.write();
+          shearStress.write();
 
-              // Calculation of the magniture of shear
+          // Calculation of the magniture of shear
 
-              Info<< "Writing wall shear stress\n" <<  endl;
+          Info<< "Writing wall shear stress\n" <<  endl;
         #};
    }
 }
