@@ -1,0 +1,188 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  4.1                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     pimpleFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         1.5;
+
+deltaT          0.001;
+
+writeControl    adjustableRunTime;
+
+writeInterval   0.1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression uncompressed;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+adjustTimeStep  yes;
+
+maxCo           5;
+
+functions
+{
+    shearStress
+    {
+        // Load the library containing the 'coded' functionObject
+        // need to read information on codedFunctionObjects in OF4: https://bugs.openfoam.org/view.php?id=2441
+        libs ("libutilityFunctionObjects.so");
+
+        type coded;
+        writeControl   adjustableRunTime;
+        writeInterval  0.1;
+
+        // Name of on-the-fly generated functionObject
+        redirectType realWallShearStress;
+
+        codeWrite
+        #{
+          const volVectorField& U = mesh().lookupObject<volVectorField>("U");
+          const fvMesh& mesh = refCast<const fvMesh>(obr_); // there are probably better ways to get to the current time
+          const int patchNumber = 3;
+
+            IOdictionary transportProperties
+            (
+              IOobject
+              (
+                "transportProperties",
+                mesh.time().constant(),   // based from https://openfoamwiki.net/index.php/OpenFOAM_guide/Input_and_Output_operations_using_dictionaries_and_the_IOobject_class  and https://github.com/OpenFOAM/OpenFOAM-dev/blob/38b99504c01e7b19b9af7cb54793fd72c03e455a/tutorials/basic/potentialFoam/cylinder/system/controlDict
+                mesh,
+                IOobject::MUST_READ_IF_MODIFIED,
+                IOobject::NO_WRITE
+              )
+            );
+
+              surfaceVectorField normals
+              (
+                  IOobject
+                  (
+                      "normals",
+                      mesh.time().timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE
+                  ),
+                  mesh,
+                  dimensionedVector
+                  (
+                      "normals",
+                      dimensionSet(0, 0, 0, 0, 0, 0 ,0),
+                      vector::zero
+                  )
+              );
+
+              // Equations from http://www.continuummechanics.org/tractionvector.html
+              volVectorField tractionVector
+              (
+                  IOobject
+                  (
+                      "tractionVector",
+                      mesh.time().timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE
+                  ),
+                  mesh,
+                  dimensionedVector
+                  (
+                      "tractionVector",
+                      sqr(dimLength)/sqr(dimTime),
+                      vector::zero
+                  )
+              );
+
+              volScalarField normalStress
+              (
+                  IOobject
+                  (
+                      "normalStress",
+                      mesh.time().timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE
+                  ),
+                  mesh,
+                  dimensionedScalar
+                  (
+                      "normalStress",
+                      sqr(dimLength)/sqr(dimTime),
+                      0
+                  )
+              );
+
+              volScalarField shearStress
+              (
+                  IOobject
+                  (
+                      "shearStress",
+                      mesh.time().timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE
+                  ),
+                  mesh,
+                  dimensionedScalar
+                  (
+                      "shearStress",
+                      sqr(dimLength)/sqr(dimTime),
+                      0
+                  )
+              );
+
+              vectorField& ssp = tractionVector.boundaryFieldRef()[patchNumber];
+              const vectorField Sfp = mesh.Sf().boundaryField()[patchNumber];
+              const scalarField magSfp = mesh.magSf().boundaryField()[patchNumber];
+              const volTensorField T = fvc::grad(U);
+              const tensorField Reffp = T.boundaryField()[patchNumber];
+              ssp = (-Sfp/magSfp) & Reffp;
+
+              // tractionVector.write();
+
+              scalarField& sig = normalStress.boundaryFieldRef()[patchNumber];
+              sig = (-Sfp/magSfp) & ssp;
+
+              // normalStress.write();
+
+              scalarField& S_n = shearStress.boundaryFieldRef()[patchNumber];
+              S_n = sqrt(magSqr(ssp)-sqr(sig));
+
+              shearStress.write();
+
+              // Calculation of the magniture of shear
+
+              Info<< "Writing wall shear stress\n" <<  endl;
+        #};
+   }
+}
+
+// ************************************************************************* //
