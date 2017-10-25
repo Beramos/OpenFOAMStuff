@@ -66,10 +66,13 @@ functions
 
         codeWrite
         #{
+          /*------- User changes ------*/
+          const int patchNumber = 3; //patchNumber of patch where shear stress is computed
+
+          /*------- Initialisation of variables -------*/
           const volVectorField& U = mesh().lookupObject<volVectorField>("U");
-          const volVectorField& nut = mesh().lookupObject<volVectorField>("nut");
+          const volScalarField& nut = mesh().lookupObject<volScalarField>("nut");
           const fvMesh& mesh = refCast<const fvMesh>(obr_); // there are probably better ways to get to the current time
-          const int patchNumber = 3;
 
           surfaceVectorField normals
           (
@@ -90,7 +93,6 @@ functions
               )
           );
 
-          // Equations from http://www.continuummechanics.org/tractionvector.html
           volVectorField tractionVector
           (
               IOobject
@@ -148,28 +150,29 @@ functions
               )
           );
 
-          vectorField& ssp = tractionVector.boundaryFieldRef()[patchNumber];
-          const vectorField Sfp = mesh.Sf().boundaryField()[patchNumber];
-          const scalarField magSfp = mesh.magSf().boundaryField()[patchNumber];
-          const volTensorField T = fvc::grad(U);
-          const tensorField Reffp = T.boundaryField()[patchNumber];
-          ssp = (-Sfp/magSfp) & Reffp;
+          /*------- Computation -------*/
+          // Equations from http://www.continuummechanics.org/tractionvector.html
 
-          // tractionVector.write();
+          vectorField& ssp = tractionVector.boundaryFieldRef()[patchNumber]; // stress tensor at boundary
+          scalarField& sig = normalStress.boundaryFieldRef()[patchNumber];   // normal stress at boundary
+          scalarField& S_n = shearStress.boundaryFieldRef()[patchNumber];    // shear stress at boundary
+          const vectorField Sfp = mesh.Sf().boundaryField()[patchNumber];    // normal vector at boundary
+          const scalarField magSfp = mesh.magSf().boundaryField()[patchNumber]; // magnitude of normal vector at boundary
 
-          scalarField& sig = normalStress.boundaryFieldRef()[patchNumber];
-          sig = (-Sfp/magSfp) & ssp;
-
-          // normalStress.write();
-
-          scalarField& S_n = shearStress.boundaryFieldRef()[patchNumber];
-          S_n = sqrt(magSqr(ssp)-sqr(sig));
+          const volTensorField T = nut*fvc::grad(U);                         // compute stress tensor
+          const tensorField Reffp = T.boundaryField()[patchNumber];          // stress tensor at boundary
+          ssp = (-Sfp/magSfp) & Reffp;      // project stress tensor on wall
+          sig = (-Sfp/magSfp) & ssp;        // compute normal stress
+          S_n = sqrt(magSqr(ssp)-sqr(sig)); // compute magnitude of shear stress at boundary
 
           shearStress.write();
 
-          // Calculation of the magniture of shear
-
           Info<< "Writing wall shear stress\n" <<  endl;
+
+          /*------- Debugging -------*/
+          // normalStress.write();
+          // tractionVector.write();
+
         #};
    }
 }
