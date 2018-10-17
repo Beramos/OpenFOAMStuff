@@ -3,6 +3,7 @@ A personal collection of custom solvers, utitilies and other extensions for Open
 
 ## Content
 
+### codedFunctionObjects
 ### wallShearStress_improved
 * **Compatible with:** OpenFOAM 4.0.x
 * **Backward compatible:** no
