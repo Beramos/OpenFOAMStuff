@@ -1,6 +1,8 @@
 # Surface diagnosis
+## Usage
+Just add these Dict-files to the system folder of your case and the sphere.stl to the base of your OpenFOAM case
 
-This dictionaries are to be used to visualise the output of the *surfaceCheck* utility in paraVIEW.
+These dictionaries are to be used to visualise the output of the *surfaceCheck* utility in paraVIEW.
 
 **badFaces**
 
@@ -19,3 +21,4 @@ This dictionaries are to be used to visualise the output of the *surfaceCheck* u
 ```bash
 	surfaceSubset surfaceSubsetDict_probFaces your_geometry.stl problemFaces.stl
 ```
+
