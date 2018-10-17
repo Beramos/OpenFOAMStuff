@@ -1,0 +1,21 @@
+# Surface diagnosis
+
+This dictionaries are to be used to visualise the output of the *surfaceCheck* utility in paraVIEW.
+
+**badFaces**
+
+```bash
+	surfaceSubset surfaceSubsetDict geometry.stl illegalFaces.stl
+```
+
+**Everything except badFaces**
+
+```bash
+	surfaceSubset surfaceSubsetDict_invert geometry.stl problem_illegalFaces.stl
+```
+
+**problemFaces**
+
+```bash
+	surfaceSubset surfaceSubsetDict_probFaces geometry.stl problemFaces.stl
+```
