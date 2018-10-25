@@ -4,6 +4,9 @@ import numpy as np
 from numpy.linalg import solve
 import sys
 
+def compute_cell2cell_exp_ratio(start_end_ratio,num_cells):
+    return start_end_ratio**(1./(num_cells-1))
+
 def construct_matrices(num_cells,length,exp_ratio):
     '''
         Constructs A and B matrix to solve the linear system A*dX = B
@@ -24,6 +27,7 @@ def construct_matrices(num_cells,length,exp_ratio):
         - A: A-matrix
         - B: B-matrix  
     '''
+
     
     A = np.zeros((num_cells,num_cells))
     A[0] = 1
@@ -70,10 +74,14 @@ if __name__ == "__main__":
         print("\n>> dX=compute_cellsizes(A,B)")
         print("dX:")
         print(dX)
+        print("If the ratio of first to last cell is given (OpenFOAM), use --compute_exp_ratio=True flag")
     else:
         num_cells = int(sys.argv[1])
         length  = float(sys.argv[2])
         exp_ratio = float(sys.argv[3])
+
+        if any([(argument == '--compute_exp_ratio=True') for argument in sys.argv ]):
+            exp_ratio = compute_cell2cell_exp_ratio(exp_ratio,num_cells)
 
         A,B = construct_matrices(num_cells,length,exp_ratio)
         dX=compute_cellsizes(A,B)
@@ -81,5 +89,6 @@ if __name__ == "__main__":
         print("Min cellsize: " + str(min(dX)))
         print("Max cellsize: " + str(max(dX)))
         
+
         if any([(argument == '--verbose')|(argument == '-v') for argument in sys.argv ]):
             print(dX)
