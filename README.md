@@ -18,6 +18,7 @@ Some Dict-files and a reference geometry are provided to be used with the surfac
 
 ### auxiliary scripts
 This folders contains various scripts to perform basic post- and preprocessing tasks
+
 **Scripts:**
 - *expansion_calculator.py*: computes the cell sizes for a given number of cells, the domain length and an expansion ratio
 
