@@ -15,3 +15,9 @@ OpenFOAMs *wallShearStress* functionObject also includes the normal stress in th
 * **Backward compatible:** untested
 
 Some Dict-files and a reference geometry are provided to be used with the surfaceSubset utility.
+
+### auxiliary scripts
+This folders contains various scripts to perform basic post- and preprocessing tasks
+**Scripts:**
+- expansion_calculator: computes the cell sizes for a given number of cells, the domain length and an expansion ratio
+
